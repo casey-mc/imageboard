@@ -1,0 +1,105 @@
+{% load static %}
+
+<link rel="stylesheet" type="text/css" href="{% static 'forum/style.css' %}">
+
+<!-- CSS only -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+<!-- JS, Popper.js, and jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+
+<!-- development version, includes helpful console warnings -->
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+{{ thread_json|json_script:"djangoData" }}
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ thread.title }}</title>
+  </head>
+<body>
+    <div id="app">
+    <div class="container-fluid px-lg-5">
+      {# TODO: Update usernames to be the public name. #}
+      <div class="row mx-lg-n5">
+        <div class="col-6 py-3 px-lg-5 my-1 border bg-light">  
+          <h5>
+            <a href="{% url 'forum:show-thread' thread.board.name thread.id %}">{{ thread.title }}</a>
+             {{thread.user.username}} <button v-on:click="showReply = !showReply" type="button" class="btn btn-primary">Reply</button>
+          </h5>
+          <p>
+            {{thread.text}}
+          </p>
+        </div>
+      </div>
+      <ul>
+
+
+        <div v-for="post in thread.posts" class="row mx-lg-n5">
+          <div class="col-6 py-3 px-lg-5 my-1 border bg-light">
+        <li>
+          <img v-if="post.media" :src="post.media" alt="img" width="250">
+            <h4>[[post.user.username]] </h4>
+            [[post.text]]
+        </li>
+          </div>
+        </div>
+
+        </ul>
+    </div>
+      <div v-if="showReply" class="card" style="width: 18rem;">
+        <div class="card-body">
+          <form action="{% url 'forum:thread-reply' thread.board.name thread.id %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+              <label for="replytext">Reply:</label>
+              <textarea class="form-control" id="replytext" name="replytext" rows="3"></textarea>
+            </div>
+            <input type="file" name="media">
+            <button type="submit" class="btn btn-primary">Submit</button>
+          </form>
+          This is some text within a card body.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+<script>
+let jsDjango = JSON.parse(document.getElementById('djangoData').textContent);
+
+var app = new Vue({
+  delimiters: ["[[", "]]"],
+  el: '#app',
+  data: {
+    message: 'Hello Vue!',
+    showReply : false,
+    connection: null,
+    thread : jsDjango,
+  },
+  created: function () {
+    console.log("Starting connection to WebSocket Server")
+    this.connection = new WebSocket('ws://'
+                      + window.location.host
+                      + '/ws/thread/'
+                      + this.thread.id
+                      + '/')
+    this.connection.onmessage = function(event) {
+      console.log(event);
+    }
+
+    this.connection.onopen = function(event) {
+      console.log(event)
+      console.log("Successfully connected to the websocket server...")
+    }
+
+    this.connection.onclose = function(event) {
+      console.error('Chat socket closed unexpectedly');
+    }
+  }
+});
+</script>
