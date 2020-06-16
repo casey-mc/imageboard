@@ -1,4 +1,4 @@
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -21,7 +21,7 @@ def thread(request, board_name, thread_id):
     thread_json = thread.get_json()
     return render(request, 'forum/show_thread.html', {'thread':thread, 'thread_json':thread_json})
 
-#TODO: This had to be able to return something is the form isn't valid, an HttpResponse Object
+#TODO: This has to be able to return something is the form isn't valid, an HttpResponse Object
 # https://stackoverflow.com/questions/5871730/how-to-upload-a-file-in-django
 @login_required
 def thread_reply(request, board_name, thread_id):
@@ -32,8 +32,8 @@ def thread_reply(request, board_name, thread_id):
             newpost = Post(media = request.FILES.get('media', None), text=request.POST['replytext'],thread=thread,
             user=request.user)
             newpost.save()
-
-            return HttpResponseRedirect(reverse('forum:show-thread', args=(thread.board.name,thread.id,)))
+            return JsonResponse({'status': 'Okay'})
+            # return HttpResponseRedirect(reverse('forum:show-thread', args=(thread.board.name,thread.id,)))
 
 @login_required
 def add_thread(request, board_name):

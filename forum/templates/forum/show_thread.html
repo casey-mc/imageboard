@@ -14,6 +14,8 @@
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
 {{ thread_json|json_script:"djangoData" }}
 
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 
 <!DOCTYPE html>
 <html>
@@ -53,14 +55,17 @@
     </div>
       <div v-if="showReply" class="card" style="width: 18rem;">
         <div class="card-body">
-          <form action="{% url 'forum:thread-reply' thread.board.name thread.id %}" method="post" enctype="multipart/form-data">
+          <form @submit="checkForm" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
               <label for="replytext">Reply:</label>
-              <textarea class="form-control" id="replytext" name="replytext" rows="3"></textarea>
+              <textarea v-model="replyText" class="form-control" id="replytext" name="replytext" rows="3"></textarea>
             </div>
-            <input type="file" name="media">
+            <input type="file" @change="onChange" name="media">
             <button type="submit" class="btn btn-primary">Submit</button>
+            <div id="posturl" style="display: none;">
+              {% url 'forum:thread-reply' thread.board.name thread.id %}
+             </div>
           </form>
           This is some text within a card body.
         </div>
@@ -80,9 +85,13 @@ var app = new Vue({
     showReply : false,
     connection: null,
     thread : jsDjango,
+    errors : [],
+    replyText : "",
+    media : null,
   },
   created: function () {
     console.log("Starting connection to WebSocket Server")
+    var _self = this;
     this.connection = new WebSocket('ws://'
                       + window.location.host
                       + '/ws/thread/'
@@ -90,6 +99,13 @@ var app = new Vue({
                       + '/')
     this.connection.onmessage = function(event) {
       console.log(event);
+      var msg = JSON.parse(event.data).post;
+
+      switch(msg.type) {
+        case "new_post":
+          _self.thread.posts.push(msg.post)
+          break;
+      }
     }
 
     this.connection.onopen = function(event) {
@@ -98,7 +114,44 @@ var app = new Vue({
     }
 
     this.connection.onclose = function(event) {
-      console.error('Chat socket closed unexpectedly');
+      console.error('Socket closed unexpectedly');
+    }
+  },
+  methods:{
+    checkForm: function(e) {
+      e.preventDefault();
+
+      this.errors = []
+
+      if (this.replyText === '') {
+        this.errors.push("Can't send blank reply.")
+      } else {
+        let formData = new FormData();
+        formData.append('media', this.media)
+        formData.append('replytext', this.replyText)
+        console.log('>> formData >> ', formData)
+
+        let urlmask = $('#posturl').html()
+        var instance = axios.create({
+          xsrfCookieName: 'csrftoken',
+          xsrfHeaderName: "X-CSRFTOKEN",
+          });
+        instance.post(urlmask, formData, 
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }).then(function (response) {
+          console.log(response)
+        })
+        .catch(function(error) {
+          console.log(error)
+        })
+
+      }
+    },
+    onChange: function(e) {
+      this.media = e.target.files[0]
     }
   }
 });

@@ -1,5 +1,17 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from datetime import date, datetime
+
+#for signals
+import json
+from asgiref.sync import async_to_sync
+from channels.generic.websocket import WebsocketConsumer
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from channels.layers import get_channel_layer
+
+
+
 
 
 def thread_path(instance, filename):
@@ -40,8 +52,8 @@ class Thread(models.Model):
         return {
             'id': self.id,
             'text': self.text,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
             # 'media': self.media.url if self.media != None else None,
             'user': {
                 'id': self.user.id,
@@ -68,8 +80,8 @@ class Post(models.Model):
         return {
             'id': self.id,
             'text': self.text,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
             'media': self.media.url if self.media else None,
             'user': {
                 'id': self.user.id,
@@ -82,3 +94,19 @@ class Post(models.Model):
 #TODO: Extend default User class
 # class ForumUser(models.Model):
     # screen_name
+
+
+# When a new post is saved, this finds the appropriate group and sends new posts to it.
+# Posts are saved via POST in views.py to avoid sending images over websockets
+# May change image upload to a CDN, in which case this will change too.
+@receiver(post_save, sender=Post)
+def receive(instance, **kwargs):
+    channel_layer = get_channel_layer()
+    group_name = 'thread_%d' % instance.thread.id
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'new_post',
+            'post': instance.get_json()
+        }
+    )
