@@ -10,7 +10,7 @@ from .models import Board, Thread, Post
 from .forms import PostForm
 
 def index(request):
-    return HttpResponse("Hello, world. You're at the forum index.")
+    return render(request, 'forum/index.html', {})
 
 def board(request, board_name):
     board = get_object_or_404(Board, name__iexact=board_name)
@@ -21,7 +21,7 @@ def thread(request, board_name, thread_id):
     thread_json = thread.get_json()
     return render(request, 'forum/show_thread.html', {'thread':thread, 'thread_json':thread_json})
 
-#TODO: This has to be able to return something is the form isn't valid, an HttpResponse Object
+#TODO: This has to be able to return something is the form isn't valid
 # https://stackoverflow.com/questions/5871730/how-to-upload-a-file-in-django
 @login_required
 def thread_reply(request, board_name, thread_id):
@@ -33,7 +33,6 @@ def thread_reply(request, board_name, thread_id):
             user=request.user)
             newpost.save()
             return JsonResponse({'status': 'Okay'})
-            # return HttpResponseRedirect(reverse('forum:show-thread', args=(thread.board.name,thread.id,)))
 
 @login_required
 def add_thread(request, board_name):

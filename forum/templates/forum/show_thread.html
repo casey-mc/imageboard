@@ -16,6 +16,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/moment@2.26.0/moment.min.js"></script>
 
 <!DOCTYPE html>
 <html>
@@ -31,7 +32,8 @@
         <div class="col-6 py-3 px-lg-5 my-1 border bg-light">  
           <h5>
             <a href="{% url 'forum:show-thread' thread.board.name thread.id %}">{{ thread.title }}</a>
-             {{thread.user.username}} <button v-on:click="showReply = !showReply" type="button" class="btn btn-primary">Reply</button>
+             [[thread.user.username]] <span :title=[[absoluteTime(thread.updated_at)]]>[[relativeTime(thread.updated_at)]]</span>
+             <button v-on:click="showReply = !showReply" type="button" class="btn btn-primary">Reply</button>
           </h5>
           <p>
             {{thread.text}}
@@ -45,7 +47,7 @@
           <div class="col-6 py-3 px-lg-5 my-1 border bg-light">
         <li>
           <img v-if="post.media" :src="post.media" alt="img" width="250">
-            <h4>[[post.user.username]] </h4>
+            <h4>[[post.user.username]] <span :title=[[absoluteTime(post.updated_at)]]>[[relativeTime(post.updated_at)]]</span></h4>
             [[post.text]]
         </li>
           </div>
@@ -152,6 +154,12 @@ var app = new Vue({
     },
     onChange: function(e) {
       this.media = e.target.files[0]
+    },
+    relativeTime: function (time) {
+      return moment(time).fromNow()
+    },
+    absoluteTime: function (time) {
+      return moment(time).format('MMMM Do YYYY, h:mm:ss a')
     }
   }
 });
