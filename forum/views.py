@@ -7,7 +7,7 @@ from django.forms.models import model_to_dict
 
 
 from .models import Board, Thread, Post
-from .forms import PostForm
+from .forms import PostForm, BoardForm
 
 def index(request):
     return render(request, 'forum/index.html', {})
@@ -33,6 +33,10 @@ def thread_reply(request, board_name, thread_id):
             user=request.user)
             newpost.save()
             return JsonResponse({'status': 'Okay'})
+        else:
+            return JsonResponse(form.errors.as_json(), safe=False)
+    else:
+        return JsonResponse({'status': 'POST only'})
 
 @login_required
 def add_thread(request, board_name):
@@ -40,3 +44,24 @@ def add_thread(request, board_name):
     t = Thread(title=request.POST['title'], text=request.POST['text'], user=request.user, board=board)
     t.save()
     return HttpResponseRedirect(reverse('forum:show-thread', args=(board_name,t.id,)))
+
+def create_board(request):
+    if request.method == 'GET':
+        return render(request, 'forum/create-board.html', {})
+    elif request.method == 'POST':
+        form = BoardForm(request.POST)
+        if form.is_valid():
+            cleaned_form = form.cleaned_data
+            new_board = Board(
+                name=cleaned_form['name'],
+                title=cleaned_form['title'],
+                description=cleaned_form['description'],
+                owner=request.user)
+            new_board.save()
+            # TODO: Have this redirect to a board admin page
+            # return HttpResponseRedirect(reverse('forum:show-board', args=(new_board.name,)))
+            return JsonResponse({"location" : reverse('forum:show-board', args=(new_board.name,))})
+        else:
+            return JsonResponse(form.errors.as_json(), safe=False)
+    else:
+        return JsonResponse({'status': 'POST only'})

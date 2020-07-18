@@ -23,7 +23,7 @@
     <div id="app">
     <div class="container-fluid px-lg-5">
         Welcome to the Forum Index!
-      <button v-on:click="showThreadForm = !showThreadForm" type="button" class="btn btn-primary">
+      <a href={% url 'forum:create-board' %} type="button" class="btn btn-primary">
           Create new Board
         </button>
     </div>

@@ -1,0 +1,146 @@
+{% load static %}
+
+<link rel="stylesheet" type="text/css" href="{% static 'forum/style.css' %}">
+
+<!-- CSS only -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+<!-- JS, Popper.js, and jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+
+<!-- development version, includes helpful console warnings -->
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ board.title }}</title>
+  </head>
+  <body>
+    <div id="app">
+    <div class="container-fluid px-lg-5">
+        Create a Board!
+        <form>
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="name">Board Name:</label>
+            <input v-model="boardName" class="form-control" id="name" name="name" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="title">Board Title:</label>
+            <input v-model="boardTitle" class="form-control" id="title" name="title" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="description">Board Name:</label>
+            <textarea v-model="boardDescription" class="form-control" id="description" name="description" rows="3"></textarea>
+          </div>
+          <button v-on:click="checkForm" class="btn btn-primary">Submit</button>
+          <div id="posturl" style="display: none;">
+            {% url 'forum:create-board' %}
+           </div>
+        </form>
+        <li v-for="error in errors">
+          [[error]]
+        </li>
+        
+    </div>
+    </div>
+  </div>
+  </body>
+</html>
+
+
+<script>
+  var app = new Vue({
+    delimiters: ["[[", "]]"],
+    el: '#app',
+    data: {
+      message: 'Hello Vue!',
+      showThreadForm : false,
+      boardName : '',
+      boardDescription : '',
+      boardTitle : '',
+      errors : []
+    },
+    methods: {
+      checkForm: function(e) {
+        e.preventDefault()
+        // Validation
+        // TODO: More test cases.
+        var _self = this
+        this.errors = []
+        if (this.boardName === '' ) {
+          this.errors.push("Board Name required")
+        }
+        if (this.boardDescription === '') {
+          this.errors.push("Board Description required")
+        }
+        if (this.boardTitle === '') {
+          this.errors.push("Board Title required")
+        }
+        if (this.boardName.length > 25) {
+          this.errors.push("Board Name must be less than 25 characters")
+        }
+        if (this.boardTitle > 60) {
+          this.errors.push("Board Title must be less than 60 characters")
+        }
+        if (this.boardDescription > 500) {
+          this.errors.push("Board Description must be less than 500 characters")
+        }
+        var regex = /[^A-Z a-z]/
+        if (regex.test(this.boardName) === true) {
+          this.errors.push("Board name can only include alphabetical characters")
+        }
+        
+        // Sending
+        if (this.errors.length === 0) {
+        let formData = new FormData();
+        formData.append('name', this.boardName)
+        formData.append('title', this.boardTitle)
+        formData.append('description', this.boardDescription)
+
+        let urlmask = $('#posturl').html()
+        var instance = axios.create({
+          xsrfCookieName: 'csrftoken',
+          xsrfHeaderName: "X-CSRFTOKEN",
+          });
+        instance.post(urlmask, formData, 
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }).then(function (response) {
+          console.log(response)
+          if (response.data.location) {
+            window.location = response.data.location
+          } else {
+            const errorJSON = JSON.parse(response.data)
+            console.log(errorJSON)
+            for (var key in errorJSON) {
+              if (errorJSON.hasOwnProperty(key)){
+                var val = errorJSON[key]
+                console.log(val)
+                // TODO: Clean this up, right now it looks like "title This field is required"
+                // Also, should we have some kind of loading indicator to show that we submitted?
+              _self.errors.push(key + " " + val[0].message)
+              }
+            }
+          }
+        })
+        .catch(function(error) {
+          console.log(error)
+        })
+
+      }
+      }
+
+
+    },
+  })
+  </script>
