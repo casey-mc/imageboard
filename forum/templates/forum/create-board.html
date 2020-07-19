@@ -93,7 +93,7 @@
         if (this.boardDescription > 500) {
           this.errors.push("Board Description must be less than 500 characters")
         }
-        var regex = /[^A-Z a-z]/
+        var regex = /[^A-Za-z]/
         if (regex.test(this.boardName) === true) {
           this.errors.push("Board name can only include alphabetical characters")
         }

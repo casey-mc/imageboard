@@ -45,6 +45,7 @@ def add_thread(request, board_name):
     t.save()
     return HttpResponseRedirect(reverse('forum:show-thread', args=(board_name,t.id,)))
 
+# TODO: Login needs to be required to POST to this, but not to GET it
 def create_board(request):
     if request.method == 'GET':
         return render(request, 'forum/create-board.html', {})

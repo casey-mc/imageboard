@@ -9,6 +9,7 @@ from channels.generic.websocket import WebsocketConsumer
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 from channels.layers import get_channel_layer
+from django.core.validators import RegexValidator
 
 
 
@@ -19,9 +20,15 @@ def thread_path(instance, filename):
     
 class Board(models.Model):
     #TODO: Name should be case insensitive
-    name = models.CharField(max_length=25, unique=True)
+    name = models.CharField(max_length=25, unique=True, validators=[
+        RegexValidator(
+            regex='^[a-zA-Z]+$',
+            message="Board name must use alphabetical characters.",
+            code="Invalid Board name"
+        ),
+    ])
     owner = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True)
-    #Descriptive attributes, could add CSS and stuff like that
+    #Descriptive attributes, could add CSS, sidebar HTML, and stuff like that
     title = models.CharField(max_length=60)
     description = models.CharField(max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
