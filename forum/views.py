@@ -4,6 +4,8 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 import json
 from django.forms.models import model_to_dict
+from django.contrib.auth import get_user_model
+
 
 
 from .models import Board, Thread, Post
@@ -31,6 +33,7 @@ def thread_reply(request, board_name, thread_id):
         if form.is_valid():
             newpost = Post(media = request.FILES.get('media', None), text=request.POST['replytext'],thread=thread,
             user=request.user)
+            # Signals.py updates other users in channel group on post save.
             newpost.save()
             return JsonResponse({'status': 'Okay'})
         else:
@@ -66,3 +69,40 @@ def create_board(request):
             return JsonResponse(form.errors.as_json(), safe=False)
     else:
         return JsonResponse({'status': 'POST only'})
+
+@login_required
+def add_moderator(request, board_name, user_id):
+    if request.method == 'POST':
+        board = get_object_or_404(Board, name=board_name)
+        # Only the owner of the board can add moderators, change this later if necessary.
+        if board.owner == request.user:
+            user = get_object_or_404(get_user_model(), pk=user_id)
+            if user not in board.moderators.all():
+                board.moderators.add(user)
+                return JsonResponse(
+                    {'message' : 'User {} is now a moderator of /{}'.format(user.screen_name,board.name)}
+                    )
+            else:
+                return JsonResponse(
+                    {'status': 'false', 'message': 'User {} is already a moderator of /{}'.format(user.screen_name,board.name)},
+                    # TODO: Is 406 the right code?
+                    status=406
+                )
+    else:
+        #TODO: test this
+        return HttpResponse("<h1>POST only</h1>",status=405)
+
+@login_required
+def delete_post(request, board_name, post_id):
+    if request.method == 'DELETE':
+        post = get_object_or_404(Post, pk=post_id)
+        board = post.thread.board
+        is_mod = (board.owner == request.user or request.user in board.moderators.all())
+        if post.user == request.user or is_mod:
+            post.delete()
+            return JsonResponse({'message' : 'Post Successfully Deleted'})
+        else:
+            return JsonResponse({'message' : 'Not authorized to delete post'},status=403)
+    else:
+        #TODO: test this
+        return HttpResponse("<h1>DELETE only</h1>",status=405)

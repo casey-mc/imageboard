@@ -1,6 +1,11 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from datetime import date, datetime
+from django.core.validators import RegexValidator
+from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
+from django.conf import settings
+
 
 #for signals
 import json
@@ -9,14 +14,15 @@ from channels.generic.websocket import WebsocketConsumer
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 from channels.layers import get_channel_layer
-from django.core.validators import RegexValidator
-
-
-
 
 
 def thread_path(instance, filename):
     return '{0}/{1}'.format(instance.thread.id,filename)
+
+# Custom User Class
+# class User(AbstractUser):
+#     screen_name = models.CharField(max_length=50)
+
     
 class Board(models.Model):
     #TODO: Name should be case insensitive
@@ -27,7 +33,9 @@ class Board(models.Model):
             code="Invalid Board name"
         ),
     ])
-    owner = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, null=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    moderators = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="board_moderators", blank=True)
+    # banned_users = models.ManyToManyField(settings.AUTH_USER_MODEL)
     #Descriptive attributes, could add CSS, sidebar HTML, and stuff like that
     title = models.CharField(max_length=60)
     description = models.CharField(max_length=500)
@@ -40,7 +48,7 @@ class Board(models.Model):
 #TODO max length of title and text should maybe be customizable by the board owner
 #Or not, reddit might not actually do that.
 class Thread(models.Model):
-    user = models.ForeignKey(get_user_model(), null=True, on_delete=models.SET_NULL)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
     board = models.ForeignKey(Board, on_delete=models.SET_NULL, null=True)
     title = models.CharField(max_length=300)
     text = models.CharField(max_length=40000)
@@ -73,7 +81,7 @@ class Thread(models.Model):
 
 #Might need a seperate field for emoji responses or something, or generic options maybe.  
 class Post(models.Model):
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     text = models.CharField(max_length=2000)
     thread = models.ForeignKey('Thread', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -98,9 +106,7 @@ class Post(models.Model):
 
 
 
-#TODO: Extend default User class
-# class ForumUser(models.Model):
-    # screen_name
+
 
 
 # When a new post is saved, this finds the appropriate group and sends new posts to it.

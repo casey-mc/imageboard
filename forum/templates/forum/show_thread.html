@@ -48,7 +48,17 @@
           <div class="col-6 py-3 px-lg-5 my-1 border bg-light">
         <li>
           <img v-if="post.media" :src="post.media" alt="img" width="250">
-            <h4>[[post.user.username]] <span :title=[[absoluteTime(post.updated_at)]]>[[relativeTime(post.updated_at)]]</span></h4>
+            <h4>
+              [[post.user.username]]
+              <span :title=[[absoluteTime(post.updated_at)]]>[[relativeTime(post.updated_at)]]</span>
+              {# These following four lines are hacky and I don't like this. #}
+              {#  This issue is, you can't use django to create the url, #}
+              {#  because we don't know the post.user.id until Vue puts it in. #}
+              <a v-on:click="addModeratorUrl(post.user.id)">Add Moderator</a>
+              <div id="add-moderator-url" style="display: none;">
+              {% url 'forum:add-moderator' thread.board.name 0 %}
+              </div>
+            </h4>
             [[post.text]]
         </li>
           </div>
@@ -168,6 +178,24 @@ var app = new Vue({
     },
     absoluteTime: function (time) {
       return moment(time).format('MMMM Do YYYY, h:mm:ss a')
+    },
+    addModeratorUrl: function (postUserId) {
+      // e.preventDefault()
+      let urlmask = $("#add-moderator-url").html()
+      let userIdPosition = urlmask.lastIndexOf("0")
+      urlmask = urlmask.slice(0,userIdPosition)
+      urlmask = urlmask + postUserId
+      var instance = axios.create({
+          xsrfCookieName: 'csrftoken',
+          xsrfHeaderName: "X-CSRFTOKEN",
+          });
+        instance.post(urlmask)
+        .then(function (response) {
+          console.log(response)
+        })
+        .catch(function(error) {
+          console.log(error)
+        })
     }
   }
 });

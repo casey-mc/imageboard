@@ -1,8 +1,10 @@
 from django.test import TestCase
 from .models import Thread, Board, Post
 from django.urls import reverse
-from django.contrib.auth.models import AnonymousUser, User
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth import get_user_model
 from .forms import BoardForm
+from django.conf import settings
 
 # # Create your tests here.
 # class ThreadModelTests(TestCase):
@@ -15,7 +17,7 @@ from .forms import BoardForm
 
 class BoardFormTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
+        self.user = get_user_model().objects.create_user(
             username='jacob', email='jacob@gmail.com', password='top_secret')
         self.client.login(username="jacob", password="top_secret")
 
@@ -60,3 +62,50 @@ class BoardFormTests(TestCase):
         }
         form = BoardForm(data=form_data)
         self.assertFalse(form.is_valid())
+
+class AddModeratorViewTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='jacob', email='jacob@gmail.com', password='top_secret')
+        self.client.login(username="jacob", password="top_secret")
+        self.board = Board.objects.create(
+            name='testboard', title='test', description='test', owner=self.user
+        )
+
+    def test_add_moderator(self):
+        """
+        Basic functionality
+        """
+        test_user = get_user_model().objects.create_user(
+            username="new_mod", email="blank@gmail.com", password="based"
+            )
+        response = self.client.post(reverse('forum:add-moderator', args=(self.board.name, test_user.id,)))
+        self.assertContains(response, "is now a moderator")
+
+    def test_moderator_already_exists(self):
+        test_user = get_user_model().objects.create_user(
+            username="new_mod", email="blank@gmail.com", password="based"
+            )
+        self.board.moderators.add(test_user)
+        response = self.client.post(reverse('forum:add-moderator', args=(self.board.name, test_user.id,)))
+        self.assertEqual(response.status_code, 406)
+
+class DeletePostViewTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='jacob', email='jacob@gmail.com', password='top_secret')
+        self.client.login(username="jacob", password="top_secret")
+        self.board = Board.objects.create(
+            name='testboard', title='test', description='test', owner=self.user
+        )
+        self.thread_owner = get_user_model().objects.create_user(
+            username='thread_owner', email='ownsthread@gmail.com', password='top_secret')
+        self.thread = Thread.objects.create(
+            user = self.thread_owner, board = self.board, title = "test", text = "test"
+        )
+
+    def test_delete_post(self):
+        new_post = Post.objects.create(
+            user = self.user, text = "testText", thread = self.thread
+        )
+        response = self.client.delete(reverse())
