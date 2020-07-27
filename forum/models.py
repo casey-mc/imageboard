@@ -12,7 +12,7 @@ import json
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 from django.dispatch import receiver
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from channels.layers import get_channel_layer
 
 
@@ -120,6 +120,18 @@ def receive(instance, **kwargs):
         group_name,
         {
             'type': 'new_post',
+            'post': instance.get_json()
+        }
+    )
+
+@receiver(post_delete, sender=Post)
+def receive_delete(instance, **kwargs):
+    channel_layer = get_channel_layer()
+    group_name = 'thread_%d' % instance.thread.id
+    async_to_sync(channel_layer.group_send)(
+        group_name,
+        {
+            'type': 'deleted_post',
             'post': instance.get_json()
         }
     )

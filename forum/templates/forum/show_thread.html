@@ -12,7 +12,8 @@
 
 <!-- development version, includes helpful console warnings -->
 <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-{{ thread_json|json_script:"djangoData" }}
+{{ thread_json|json_script:"djangoThread" }}
+{{ current_user|json_script:"djangoUser"}}
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
@@ -56,8 +57,15 @@
               {#  because we don't know the post.user.id until Vue puts it in. #}
               <a v-on:click="addModeratorUrl(post.user.id)">Add Moderator</a>
               <div id="add-moderator-url" style="display: none;">
-              {% url 'forum:add-moderator' thread.board.name 0 %}
+                {% url 'forum:add-moderator' thread.board.name 0 %}
               </div>
+
+              <a v-if="post.user.id === currentUser" v-on:click="deletePost(post.id)">Delete</a>
+              <div id="delete-post-url" style="display: none;">
+                {% url 'forum:delete-post' thread.board.name thread.id 0 %}
+              </div>
+
+
             </h4>
             [[post.text]]
         </li>
@@ -90,7 +98,8 @@
 </html>
 
 <script>
-let jsDjango = JSON.parse(document.getElementById('djangoData').textContent);
+let threadJS = JSON.parse(document.getElementById('djangoThread').textContent);
+let userJS = JSON.parse(document.getElementById('djangoUser').textContent);
 
 var app = new Vue({
   delimiters: ["[[", "]]"],
@@ -99,7 +108,8 @@ var app = new Vue({
     message: 'Hello Vue!',
     showReply : false,
     connection: null,
-    thread : jsDjango,
+    thread : threadJS,
+    currentUser: userJS,
     errors : [],
     replyText : "",
     media : null,
@@ -119,6 +129,12 @@ var app = new Vue({
       switch(msg.type) {
         case "new_post":
           _self.thread.posts.push(msg.post)
+          break;
+        case "deleted_post":
+          const i = _self.thread.posts.findIndex(element => element.id === msg.post.id)
+          _self.thread.posts[i].user.id = "null"
+          _self.thread.posts[i].user.username = "[deleted]"
+          _self.thread.posts[i].text = "[deleted]"
           break;
       }
     }
@@ -180,7 +196,7 @@ var app = new Vue({
       return moment(time).format('MMMM Do YYYY, h:mm:ss a')
     },
     addModeratorUrl: function (postUserId) {
-      // e.preventDefault()
+      e.preventDefault()
       let urlmask = $("#add-moderator-url").html()
       let userIdPosition = urlmask.lastIndexOf("0")
       urlmask = urlmask.slice(0,userIdPosition)
@@ -190,6 +206,24 @@ var app = new Vue({
           xsrfHeaderName: "X-CSRFTOKEN",
           });
         instance.post(urlmask)
+        .then(function (response) {
+          console.log(response)
+        })
+        .catch(function(error) {
+          console.log(error)
+        })
+    },
+    deletePost: function(postId) {
+      // e.preventDefault()
+      let urlmask = $("#delete-post-url").html()
+      let postIdPosition = urlmask.lastIndexOf("0")
+      urlmask = urlmask.slice(0,postIdPosition)
+      urlmask = urlmask + postId
+      var instance = axios.create({
+          xsrfCookieName: 'csrftoken',
+          xsrfHeaderName: "X-CSRFTOKEN",
+          });
+        instance.delete(urlmask)
         .then(function (response) {
           console.log(response)
         })

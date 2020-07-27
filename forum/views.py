@@ -21,7 +21,10 @@ def board(request, board_name):
 def thread(request, board_name, thread_id):
     thread = get_object_or_404(Thread, pk=thread_id)
     thread_json = thread.get_json()
-    return render(request, 'forum/show_thread.html', {'thread':thread, 'thread_json':thread_json})
+    return render(
+        request, 'forum/show_thread.html',
+        {'thread':thread, 'thread_json':thread_json, 'current_user':request.user.id}
+        )
 
 #TODO: This has to be able to return something is the form isn't valid
 # https://stackoverflow.com/questions/5871730/how-to-upload-a-file-in-django
@@ -93,14 +96,18 @@ def add_moderator(request, board_name, user_id):
         return HttpResponse("<h1>POST only</h1>",status=405)
 
 @login_required
-def delete_post(request, board_name, post_id):
+def delete_post(request, board_name, thread_id, post_id):
     if request.method == 'DELETE':
         post = get_object_or_404(Post, pk=post_id)
         board = post.thread.board
-        is_mod = (board.owner == request.user or request.user in board.moderators.all())
-        if post.user == request.user or is_mod:
+        if post.user == request.user:
             post.delete()
-            return JsonResponse({'message' : 'Post Successfully Deleted'})
+            return JsonResponse({'message' : 'Post Successfully Deleted', 'deleted_by_mod' : "False"})
+        elif (board.owner == request.user or request.user in board.moderators.all()):
+            post.delete()
+            #TODO: Give some more robust message about who deleted your post or how to appeal
+            #Or maybe not, reddit deals with this with an automated message sent by mod team.
+            return JsonResponse({'message' : 'Post Successfully Deleted', 'deleted_by_mod' : "True"})
         else:
             return JsonResponse({'message' : 'Not authorized to delete post'},status=403)
     else:

@@ -38,3 +38,8 @@ class ThreadConsumer(WebsocketConsumer):
         self.send(text_data=json.dumps({
             'post': event
         }))
+
+    def deleted_post(self, event):
+        self.send(text_data=json.dumps({
+            'post': event
+        }))

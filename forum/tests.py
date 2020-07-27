@@ -83,6 +83,9 @@ class AddModeratorViewTests(TestCase):
         self.assertContains(response, "is now a moderator")
 
     def test_moderator_already_exists(self):
+        """
+        Form should return error if user is already a moderator.
+        """
         test_user = get_user_model().objects.create_user(
             username="new_mod", email="blank@gmail.com", password="based"
             )
@@ -105,7 +108,32 @@ class DeletePostViewTests(TestCase):
         )
 
     def test_delete_post(self):
+        """
+        Basic functionality of view.
+        """
         new_post = Post.objects.create(
             user = self.user, text = "testText", thread = self.thread
         )
-        response = self.client.delete(reverse())
+        response = self.client.delete(
+            reverse("forum:delete-post", args=(self.board.name, self.thread.id, new_post.id,))
+            )
+        self.assertContains(response, "Post Successfully Deleted")
+
+    def test_delete_not_authorized(self):
+        """
+        A non-mod who doesn't own the post shouldn't be able to delete it.
+        """
+        board = Board.objects.create(
+            name='testboard2', title='test', description='test', owner=self.thread_owner
+        )
+        thread = Thread.objects.create(
+            user = self.thread_owner, board = board, title = "test", text = "test"
+        )
+        post = Post.objects.create(
+            user = self.thread_owner, text = "testText", thread = thread
+        )
+
+        response = self.client.delete(
+            reverse("forum:delete-post", args=(board.name, self.thread.id, post.id,))
+            )
+        self.assertEqual(response.status_code, 403)
