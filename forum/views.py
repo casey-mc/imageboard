@@ -3,13 +3,15 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 import json
+import datetime
 from django.forms.models import model_to_dict
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 
 
-from .models import Board, Thread, Post
-from .forms import PostForm, BoardForm
+from .models import Board, Thread, Post, BannedUsers
+from .forms import PostForm, BoardForm, BannedUserForm
 
 def index(request):
     return render(request, 'forum/index.html', {})
@@ -113,3 +115,32 @@ def delete_post(request, board_name, thread_id, post_id):
     else:
         #TODO: test this
         return HttpResponse("<h1>DELETE only</h1>",status=405)
+
+@login_required
+def board_ban_user(request, board_name, user_id):
+    if request.method == 'POST':
+        board = get_object_or_404(Board, name=board_name)
+        user = get_object_or_404(get_user_model(), pk=user_id)
+        if (user in board.moderators.all()):
+            return JsonResponse({'message' : 'Cannot ban moderator'}, status=403)
+        if (board.owner == request.user or request.user in board.moderators.all()):
+            form = BannedUserForm(request.POST)
+            if form.is_valid():
+                post = get_object_or_404(Post, pk=form.post_id)
+                post.delete()
+                ban_expiry = timezone.now()
+                if form.ban_duration:
+                    ban_expiry = ban_expiry + form.ban_duration
+                else:
+                    ban_expiry = ban_expiry + datetime.timedelta(days=1)
+                board.banned_users.create(user=user, through_defaults={'expiry' : ban_expiry})
+                #TODO: Give some more robust message about who banned you or how to appeal
+                #Or maybe not, reddit deals with this with an automated message sent by mod team.
+                return JsonResponse({'message' : 'User Banned'})
+            else:
+                return JsonResponse(form.errors.as_json(), safe=False)
+        else:
+            return JsonResponse({'message' : 'Not authorized to ban user'},status=403)
+    else:
+        #TODO: test this
+        return HttpResponse("<h1>POST only</h1>",status=405)

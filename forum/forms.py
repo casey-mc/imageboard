@@ -10,12 +10,11 @@ class PostForm(forms.Form):
     )
     replytext = forms.CharField(label="Text", max_length=2000)
 
-# class BoardForm(forms.Form):
-#     name = forms.CharField(label="Name", max_length=25)
-#     title = forms.CharField(label="Title", max_length=60)
-#     description = forms.CharField(label="Description", max_length=500)
-
 class BoardForm(ModelForm):
     class Meta:
         model = Board
         fields = ['name', 'title', 'description']
+
+class BannedUserForm(forms.Form):
+    ban_duration = forms.DurationField(label="ban duration", required=False)
+    post_id = forms.IntegerField(label="post id", required=False)

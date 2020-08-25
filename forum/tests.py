@@ -1,10 +1,14 @@
 from django.test import TestCase
-from .models import Thread, Board, Post
+from .models import Thread, Board, Post, BannedUsers
 from django.urls import reverse
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
 from .forms import BoardForm
 from django.conf import settings
+import datetime
+from django.utils import timezone
+from django.utils.timezone import make_aware
+
 
 # # Create your tests here.
 # class ThreadModelTests(TestCase):
@@ -137,3 +141,63 @@ class DeletePostViewTests(TestCase):
             reverse("forum:delete-post", args=(board.name, self.thread.id, post.id,))
             )
         self.assertEqual(response.status_code, 403)
+
+class BannedUsersModelTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='jacob', email='jacob@gmail.com', password='top_secret')
+
+    def test_add_banned_user(self):
+        """
+        Basic functionality of model
+        """
+        user_to_ban = get_user_model().objects.create_user(
+            username='banme', email='test@gmail.com', password='top_secret'
+        )
+        board = Board.objects.create(
+            name='testboard', title='test', description='test', owner=self.user
+        )
+        banned = BannedUsers.objects.create(user=user_to_ban, board=board,
+        ban_expiry=timezone.now() + datetime.timedelta(hours=1))
+        banned_users = BannedUsers.objects.filter(board=board)
+        user_after_ban = BannedUsers.objects.get(user=user_to_ban)
+        self.assertIn(user_after_ban, banned_users)
+
+    def test_expired_ban(self):
+        """
+        If a user's ban has expired, they should no longer show up in a banned_users query
+        """
+        user_to_ban = get_user_model().objects.create_user(
+            username='banme', email='test@gmail.com', password='top_secret'
+        )
+        board = Board.objects.create(
+            name='testboard', title='test', description='test', owner=self.user
+        )
+        ban_time = timezone.now() - datetime.timedelta(hours=1)
+        banned = BannedUsers.objects.create(user=user_to_ban, board=board,
+        ban_expiry=ban_time)
+        banned_users = BannedUsers.objects.filter(board=board)
+        self.assertRaises(BannedUsers.DoesNotExist, BannedUsers.objects.get, user=user_to_ban)
+
+class BanUserViewTests(TestCase):
+    def setUp(self):
+        self.board_owner = get_user_model().objects.create_user(
+            username='jacob', email='jacob@gmail.com', password='top_secret')
+        self.client.login(username="jacob", password="top_secret")
+        self.board = Board.objects.create(
+            name='testboard', title='test', description='test', owner=self.board_owner
+        )
+        self.thread_owner = get_user_model().objects.create_user(
+            username='thread_owner', email='ownsthread@gmail.com', password='top_secret')
+        self.thread = Thread.objects.create(
+            user = self.thread_owner, board = self.board, title = "test", text = "test"
+        )
+
+    def test_ban_user(self):
+        new_post = Post.objects.create(
+            user = self.user, text = "testText", thread = self.thread
+        )
+        response = self.client.delete(
+            reverse("forum:delete-post", args=(self.board.name, self.thread.id, new_post.id,))
+            )
+        self.assertContains(response, "Post Successfully Deleted")

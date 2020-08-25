@@ -25,14 +25,6 @@ class ThreadConsumer(WebsocketConsumer):
             self.channel_name
         )
 
-    # def receive(self, text_data):
-    #     text_data_json = json.loads(text_data)
-    #     message = text_data_json['message']
-
-    #     self.send(text_data=json.dumps({
-    #         'message': message
-    #     }))
-
     def new_post(self, event):
         # Send post to WebSocket
         self.send(text_data=json.dumps({

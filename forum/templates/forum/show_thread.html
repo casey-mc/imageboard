@@ -52,19 +52,20 @@
             <h4>
               [[post.user.username]]
               <span :title=[[absoluteTime(post.updated_at)]]>[[relativeTime(post.updated_at)]]</span>
-              {# These following four lines are hacky and I don't like this. #}
-              {#  This issue is, you can't use django to create the url, #}
-              {#  because we don't know the post.user.id until Vue puts it in. #}
-              <a v-on:click="addModeratorUrl(post.user.id)">Add Moderator</a>
-              <div id="add-moderator-url" style="display: none;">
-                {% url 'forum:add-moderator' thread.board.name 0 %}
-              </div>
-
-              <a v-if="post.user.id === currentUser" v-on:click="deletePost(post.id)">Delete</a>
-              <div id="delete-post-url" style="display: none;">
-                {% url 'forum:delete-post' thread.board.name thread.id 0 %}
-              </div>
-
+              <a v-on:click="addModerator(post.user.addModeratorUrl)">-Add Moderator-</a>
+              <a v-if="post.user.id === currentUser" v-on:click="deletePost(post.user.deletePostUrl)">-Delete-</a>
+              {# TODO: Make this pop up the following form next to it #}
+              <a>-Ban User-</a>
+              <form @submit="checkBanForm(post.user.banUserUrl, post.id)">
+                <div class="form-group">
+                  <label for="ban_duration">Ban Duration:</label>
+                  <input v-model="ban_duration" class="form-control" id="ban_duration" name="ban_duration">
+                </div>
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="delete_post">
+                  <label for="delete_post">Delete Post</label>
+                </div>
+              </form>
 
             </h4>
             [[post.text]]
@@ -195,17 +196,13 @@ var app = new Vue({
     absoluteTime: function (time) {
       return moment(time).format('MMMM Do YYYY, h:mm:ss a')
     },
-    addModeratorUrl: function (postUserId) {
-      e.preventDefault()
-      let urlmask = $("#add-moderator-url").html()
-      let userIdPosition = urlmask.lastIndexOf("0")
-      urlmask = urlmask.slice(0,userIdPosition)
-      urlmask = urlmask + postUserId
+    addModerator: function (url) {
+      // e.preventDefault()
       var instance = axios.create({
           xsrfCookieName: 'csrftoken',
           xsrfHeaderName: "X-CSRFTOKEN",
           });
-        instance.post(urlmask)
+        instance.post(url)
         .then(function (response) {
           console.log(response)
         })
@@ -213,17 +210,26 @@ var app = new Vue({
           console.log(error)
         })
     },
-    deletePost: function(postId) {
+    deletePost: function(url) {
       // e.preventDefault()
-      let urlmask = $("#delete-post-url").html()
-      let postIdPosition = urlmask.lastIndexOf("0")
-      urlmask = urlmask.slice(0,postIdPosition)
-      urlmask = urlmask + postId
       var instance = axios.create({
           xsrfCookieName: 'csrftoken',
           xsrfHeaderName: "X-CSRFTOKEN",
           });
-        instance.delete(urlmask)
+        instance.delete(url)
+        .then(function (response) {
+          console.log(response)
+        })
+        .catch(function(error) {
+          console.log(error)
+        })
+    },
+    banUser: function(url) {
+      var instance = axios.create({
+          xsrfCookieName: 'csrftoken',
+          xsrfHeaderName: "X-CSRFTOKEN",
+          });
+        instance.delete(url)
         .then(function (response) {
           console.log(response)
         })
