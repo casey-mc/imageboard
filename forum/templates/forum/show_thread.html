@@ -55,16 +55,18 @@
               <a v-on:click="addModerator(post.user.addModeratorUrl)">-Add Moderator-</a>
               <a v-if="post.user.id === currentUser" v-on:click="deletePost(post.user.deletePostUrl)">-Delete-</a>
               {# TODO: Make this pop up the following form next to it #}
+              {# TODO: Have the form give a few ban times, like 1 day, 1 week, 1 month, etc. or the option for custom#}
               <a>-Ban User-</a>
-              <form @submit="checkBanForm(post.user.banUserUrl, post.id)">
+              <form @submit.prevent="banUser(post.user.banUserUrl, post.id)">
                 <div class="form-group">
                   <label for="ban_duration">Ban Duration:</label>
                   <input v-model="ban_duration" class="form-control" id="ban_duration" name="ban_duration">
                 </div>
                 <div class="form-check">
-                  <input type="checkbox" class="form-check-input" id="delete_post">
+                  <input type="checkbox" v-model="delete_post" class="form-check-input" id="delete_post">
                   <label for="delete_post">Delete Post</label>
                 </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
               </form>
 
             </h4>
@@ -111,9 +113,13 @@ var app = new Vue({
     connection: null,
     thread : threadJS,
     currentUser: userJS,
+    // Submit reply form variables:
     errors : [],
     replyText : "",
     media : null,
+    // Ban user form variables:
+    ban_duration : 0,
+    delete_post : true,
   },
   created: function () {
     console.log("Starting connection to WebSocket Server")
@@ -136,6 +142,7 @@ var app = new Vue({
           _self.thread.posts[i].user.id = "null"
           _self.thread.posts[i].user.username = "[deleted]"
           _self.thread.posts[i].text = "[deleted]"
+          _self.thread.posts[i].id = -1
           break;
       }
     }
@@ -146,6 +153,7 @@ var app = new Vue({
     }
 
     this.connection.onclose = function(event) {
+      //TODO: Notify the user to reload the page in order to get live updates.
       console.error('Socket closed unexpectedly');
     }
   },
@@ -181,6 +189,7 @@ var app = new Vue({
           console.log(response)
         })
         .catch(function(error) {
+          //TODO: Do something with this error message.
           console.log(error)
         })
       }
@@ -207,6 +216,7 @@ var app = new Vue({
           console.log(response)
         })
         .catch(function(error) {
+          //TODO: Do something with this error message.
           console.log(error)
         })
     },
@@ -221,19 +231,31 @@ var app = new Vue({
           console.log(response)
         })
         .catch(function(error) {
+          //TODO: Do something with this error message.
           console.log(error)
         })
     },
-    banUser: function(url) {
+    banUser: function(url, postId) {
+      let formData = new FormData();
+      if (this.ban_duration !== 0) {
+        formData.append('ban_duration', moment.duration(this.ban_duration, 'days'))
+      } else {
+        formData.append('ban_duration', moment.duration(1, 'days'))
+      }
+
+      if (this.delete_post === true) {
+        formData.append('post_id', postId)
+      }
       var instance = axios.create({
           xsrfCookieName: 'csrftoken',
           xsrfHeaderName: "X-CSRFTOKEN",
           });
-        instance.delete(url)
+        instance.post(url, formData)
         .then(function (response) {
           console.log(response)
         })
         .catch(function(error) {
+          //TODO: Do something with this error message.
           console.log(error)
         })
     }

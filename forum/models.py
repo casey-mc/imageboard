@@ -36,7 +36,7 @@ class Board(models.Model):
     moderators = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="board_moderators", blank=True)
     #When using the following relation, query through BannedUsers
     #Otherwise, it doesn't use the BannedUsersManager and filter out expired bans.
-    banned_users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='BannedUsers', related_name="board_banned_users", blank=True)
+    banned_users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='BannedUser', related_name="board_banned_users", blank=True)
     #Descriptive attributes, could add CSS, sidebar HTML, and stuff like that
     title = models.CharField(max_length=60)
     description = models.CharField(max_length=500)
@@ -49,16 +49,16 @@ class Board(models.Model):
 
 # TODO: If a custom RelatedManager is possible, maybe you could get Board.banned_users
 # to use this for joins (to exlude expired bans) https://docs.djangoproject.com/en/3.0/ref/models/relations/
-class BannedUsersManager(models.Manager):
+class BannedUserManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().filter(ban_expiry__gt=timezone.now())
 
 
-class BannedUsers(models.Model):
+class BannedUser(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     board = models.ForeignKey(Board, on_delete=models.CASCADE)
     ban_expiry = models.DateTimeField()
-    objects = BannedUsersManager()
+    objects = BannedUserManager()
 
 #TODO max length of title and text should maybe be customizable by the board owner
 #Or not, reddit might not actually do that.

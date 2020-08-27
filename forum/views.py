@@ -10,7 +10,7 @@ from django.utils import timezone
 
 
 
-from .models import Board, Thread, Post, BannedUsers
+from .models import Board, Thread, Post, BannedUser
 from .forms import PostForm, BoardForm, BannedUserForm
 
 def index(request):
@@ -126,16 +126,21 @@ def board_ban_user(request, board_name, user_id):
         if (board.owner == request.user or request.user in board.moderators.all()):
             form = BannedUserForm(request.POST)
             if form.is_valid():
-                post = get_object_or_404(Post, pk=form.post_id)
-                post.delete()
+                cleaned_form = form.cleaned_data
+                try: 
+                    post = get_object_or_404(Post, pk=cleaned_form['post_id'])
+                    post.delete()
+                except:
+                    pass
                 ban_expiry = timezone.now()
-                if form.ban_duration:
-                    ban_expiry = ban_expiry + form.ban_duration
-                else:
+                try:
+                    ban_expiry = ban_expiry + cleaned_form['ban_duration']
+                except:
                     ban_expiry = ban_expiry + datetime.timedelta(days=1)
-                board.banned_users.create(user=user, through_defaults={'expiry' : ban_expiry})
+                board.banned_users.add(user, through_defaults={'ban_expiry' : ban_expiry})
                 #TODO: Give some more robust message about who banned you or how to appeal
                 #Or maybe not, reddit deals with this with an automated message sent by mod team.
+                #Which would need some kind of PM/DM mail system
                 return JsonResponse({'message' : 'User Banned'})
             else:
                 return JsonResponse(form.errors.as_json(), safe=False)
