@@ -141,7 +141,7 @@ def board_ban_user(request, board_name, user_id):
                 #TODO: Give some more robust message about who banned you or how to appeal
                 #Or maybe not, reddit deals with this with an automated message sent by mod team.
                 #Which would need some kind of PM/DM mail system
-                return JsonResponse({'message' : 'User Banned'})
+                return JsonResponse({'message' : 'User Banned', 'ban_expiry' : ban_expiry})
             else:
                 return JsonResponse(form.errors.as_json(), safe=False)
         else:

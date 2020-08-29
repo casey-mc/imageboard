@@ -1,5 +1,6 @@
 from django.test import TestCase
 from .models import Thread, Board, Post, BannedUser
+from django.db import models
 from django.urls import reverse
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
@@ -8,7 +9,8 @@ from django.conf import settings
 import datetime
 from django.utils import timezone
 from django.utils.timezone import make_aware
-
+import json
+from django.core.exceptions import ObjectDoesNotExist
 
 # # Create your tests here.
 # class ThreadModelTests(TestCase):
@@ -179,25 +181,57 @@ class BannedUserModelTests(TestCase):
         banned_users = BannedUser.objects.filter(board=board)
         self.assertRaises(BannedUser.DoesNotExist, BannedUser.objects.get, user=user_to_ban)
 
-# class BanUserViewTests(TestCase):
-#     def setUp(self):
-#         self.board_owner = get_user_model().objects.create_user(
-#             username='jacob', email='jacob@gmail.com', password='top_secret')
-#         self.client.login(username="jacob", password="top_secret")
-#         self.board = Board.objects.create(
-#             name='testboard', title='test', description='test', owner=self.board_owner
-#         )
-#         self.thread_owner = get_user_model().objects.create_user(
-#             username='thread_owner', email='ownsthread@gmail.com', password='top_secret')
-#         self.thread = Thread.objects.create(
-#             user = self.thread_owner, board = self.board, title = "test", text = "test"
-#         )
+class BanUserViewTests(TestCase):
+    def setUp(self):
+        self.board_owner = get_user_model().objects.create_user(
+            username='jacob', email='jacob@gmail.com', password='top_secret')
+        self.client.login(username="jacob", password="top_secret")
+        self.board = Board.objects.create(
+            name='testboard', title='test', description='test', owner=self.board_owner
+        )
+        self.thread_owner = get_user_model().objects.create_user(
+            username='thread_owner', email='ownsthread@gmail.com', password='top_secret')
+        self.thread = Thread.objects.create(
+            user = self.thread_owner, board = self.board, title = "test", text = "test"
+        )
 
-#     def test_ban_user(self):
-#         new_post = Post.objects.create(
-#             user = self.user, text = "testText", thread = self.thread
-#         )
-#         response = self.client.delete(
-#             reverse("forum:delete-post", args=(self.board.name, self.thread.id, new_post.id,))
-#             )
-#         self.assertContains(response, "Post Successfully Deleted")
+    def test_ban_user(self):
+        ban_user = get_user_model().objects.create_user(
+            username='tim', email='tim@gmail.com', password='top_secret')
+        new_post = Post.objects.create(
+            user = ban_user, text = "testText", thread = self.thread
+        )
+        response = self.client.post(
+            reverse("forum:board-ban-user", args=(self.board.name, ban_user.id,)),
+            )
+        self.assertContains(response, "User Banned")
+
+    def test_ban_user_7_days(self):
+        ban_user = get_user_model().objects.create_user(
+            username='tim', email='tim@gmail.com', password='top_secret')
+        new_post = Post.objects.create(
+            user = ban_user, text = "testText", thread = self.thread
+        )
+        response = self.client.post(
+            reverse("forum:board-ban-user", args=(self.board.name, ban_user.id,)),
+            data={'ban_duration' : datetime.timedelta(days=7)}
+            )
+        json_response = json.loads(response.content)
+        time_from_response = datetime.datetime.fromisoformat(json_response['ban_expiry'].replace('Z', '+00:00'))
+        ban_time = timezone.now() + datetime.timedelta(days=7)
+        #Zero the seconds and microseconds because it only really matters that they're equal down to the minute
+        time_from_response = time_from_response.replace(second=0, microsecond=0)
+        ban_time = ban_time.replace(second=0, microsecond=0)
+        self.assertEqual(time_from_response, ban_time)
+
+    def test_ban_and_delete_post(self):
+        ban_user = get_user_model().objects.create_user(
+            username='tim', email='tim@gmail.com', password='top_secret')
+        new_post = Post.objects.create(
+            user = ban_user, text = "testText", thread = self.thread
+        )
+        response = self.client.post(
+            reverse("forum:board-ban-user", args=(self.board.name, ban_user.id,)),
+            data = {'post_id' : new_post.id}
+            )
+        self.assertRaises(Post.DoesNotExist, Post.objects.get, pk=new_post.id)
