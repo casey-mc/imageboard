@@ -116,6 +116,7 @@ def delete_post(request, board_name, thread_id, post_id):
         #TODO: test this
         return HttpResponse("<h1>DELETE only</h1>",status=405)
 
+#TODO: This currently doesn't work if you ban a user from a thread.
 @login_required
 def board_ban_user(request, board_name, user_id):
     if request.method == 'POST':
