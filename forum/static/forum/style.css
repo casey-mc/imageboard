@@ -5,3 +5,27 @@ li a {
 body {
     background: white url("images/background.gif") no-repeat;
 }
+
+/* .wrapper1 {
+    display: block;
+    min-height: 100%;
+    align-items: stretch;
+}
+
+.wrapperitem {
+    display:flex;
+}
+
+#sidebar {
+    background: yellow;
+    right: 0px;
+    width: 20%;
+    position: fixed;
+}
+
+#content {
+    background: green;
+    position: absolute;
+    width: 80%;
+    left: 20%;
+} */

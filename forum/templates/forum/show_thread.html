@@ -1,85 +1,91 @@
 {% extends "forum/base.html" %}
-{{ thread_json|json_script:"djangoThread" }}
-{{ current_user|json_script:"djangoUser"}}
-
-
 {% block title %}{{thread.title}}{% endblock %}
+
+{% block navbar.board.link %}
+{% url 'forum:show-board' thread.board %}
+{% endblock %}
+{% block navbar.board.name %}
+{{ thread.board.name }}
+{% endblock %}
 
 {% block content %}
 
-    <div id="app">
-    <div class="container-fluid px-lg-5">
-      {# TODO: Update usernames to be the public name. #}
-      <div class="row mx-lg-n5">
-        <div class="col-6 py-3 px-lg-5 my-1 border bg-light">  
-          <h5>
-            <a href="{% url 'forum:show-thread' thread.board.name thread.id %}">{{ thread.title }}</a>
-             [[thread.user.username]]
-             <span :title=[[absoluteTime(thread.updated_at)]]>[[relativeTime(thread.updated_at)]]</span>
-             <button v-on:click="showReply = !showReply" type="button" class="btn btn-primary">Reply</button>
-          </h5>
-          <p>
-            {{thread.text}}
-          </p>
-        </div>
-      </div>
-      <ul>
-
-
-        <div v-for="post in thread.posts" class="row mx-lg-n5">
-          <div class="col-6 py-3 px-lg-5 my-1 border bg-light">
-        <li>
-          <img v-if="post.media" :src="post.media" alt="img" width="250">
-            <h4>
-              [[post.user.username]]
-              <span :title=[[absoluteTime(post.updated_at)]]>[[relativeTime(post.updated_at)]]</span>
-              <a v-on:click="addModerator(post.user.addModeratorUrl)">-Add Moderator-</a>
-              <a v-if="post.user.id === currentUser" v-on:click="deletePost(post.user.deletePostUrl)">-Delete-</a>
-              {# TODO: Make this pop up the following form next to it #}
-              {# TODO: Have the form give a few ban times, like 1 day, 1 week, 1 month, etc. or the option for custom#}
-              <a>-Ban User-</a>
-              <form @submit.prevent="banUser(post.user.banUserUrl, post.id)">
-                <div class="form-group">
-                  <label for="ban_duration">Ban Duration:</label>
-                  <input v-model="ban_duration" class="form-control" id="ban_duration" name="ban_duration">
-                </div>
-                <div class="form-check">
-                  <input type="checkbox" v-model="delete_post" class="form-check-input" id="delete_post">
-                  <label for="delete_post">Delete Post</label>
-                </div>
-                <button type="submit" class="btn btn-primary">Submit</button>
-              </form>
-
-            </h4>
-            [[post.text]]
-        </li>
-          </div>
-        </div>
-
-        </ul>
+<div id="app" class="container-fluid">
+<div class="container-fluid px-lg-5">
+  {# TODO: Update usernames to be the public name. #}
+  <div class="row mx-lg-n5">
+    <div class="col-6 py-3 px-lg-5 my-1 border bg-light">  
+      <h5>
+        <a href="{% url 'forum:show-thread' thread.board.name thread.id %}">{{ thread.title }}</a>
+          [[thread.user.username]]
+          <span :title=[[absoluteTime(thread.updated_at)]]>[[relativeTime(thread.updated_at)]]</span>
+          <button v-on:click="showReply = !showReply" type="button" class="btn btn-primary">Reply</button>
+      </h5>
+      <p>
+        {{thread.text}}
+      </p>
     </div>
-      <div v-if="showReply" class="card" style="width: 18rem;">
-        <div class="card-body">
-          <form @submit="checkForm" method="post" enctype="multipart/form-data">
-            {% csrf_token %}
+  </div>
+  <ul>
+
+
+    <div v-for="post in thread.posts" class="row mx-lg-n5">
+      <div class="col-6 py-3 px-lg-5 my-1 border bg-light">
+    <li>
+      <img v-if="post.media" :src="post.media" alt="img" width="250">
+        <h4>
+          [[post.user.username]]
+          <span :title=[[absoluteTime(post.updated_at)]]>[[relativeTime(post.updated_at)]]</span>
+          <a v-on:click="addModerator(post.user.addModeratorUrl)">-Add Moderator-</a>
+          <a v-if="post.user.id === currentUser" v-on:click="deletePost(post.user.deletePostUrl)">-Delete-</a>
+          {# TODO: Make this pop up the following form next to it #}
+          {# TODO: Have the form give a few ban times, like 1 day, 1 week, 1 month, etc. or the option for custom#}
+          <a>-Ban User-</a>
+          <form @submit.prevent="banUser(post.user.banUserUrl, post.id)">
             <div class="form-group">
-              <label for="replytext">Reply:</label>
-              <textarea v-model="replyText" class="form-control" id="replytext" name="replytext" rows="3"></textarea>
+              <label for="ban_duration">Ban Duration:</label>
+              <input v-model="ban_duration" class="form-control" id="ban_duration" name="ban_duration">
             </div>
-            <input type="file" @change="onChange" name="media">
+            <div class="form-check">
+              <input type="checkbox" v-model="delete_post" class="form-check-input" id="delete_post">
+              <label for="delete_post">Delete Post</label>
+            </div>
             <button type="submit" class="btn btn-primary">Submit</button>
-            <div id="posturl" style="display: none;">
-              {% url 'forum:thread-reply' thread.board.name thread.id %}
-             </div>
           </form>
-          <li v-for="error in errors">
-            [[error]]
-          </li>
-        </div>
+
+        </h4>
+        [[post.text]]
+    </li>
       </div>
     </div>
+
+    </ul>
+</div>
+  <div v-if="showReply" class="card" style="width: 18rem;">
+    <div class="card-body">
+      <form @submit="checkForm" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="replytext">Reply:</label>
+          <textarea v-model="replyText" class="form-control" id="replytext" name="replytext" rows="3"></textarea>
+        </div>
+        <input type="file" @change="onChange" name="media">
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <div id="posturl" style="display: none;">
+          {% url 'forum:thread-reply' thread.board.name thread.id %}
+          </div>
+      </form>
+      <li v-for="error in errors">
+        [[error]]
+      </li>
+    </div>
+  </div>
+</div>
 {% endblock content %}
 
+{% block script %}
+{{ thread_json|json_script:"djangoThread" }}
+{{ current_user|json_script:"djangoUser"}}
 <script>
 let threadJS = JSON.parse(document.getElementById('djangoThread').textContent);
 let userJS = JSON.parse(document.getElementById('djangoUser').textContent);
@@ -242,3 +248,13 @@ var app = new Vue({
   }
 });
 </script>
+
+{% endblock script %}
+
+<!-- {% block style %}
+<style>
+  #app {
+    display: flex;
+  }
+</style>
+{% endblock %} -->
